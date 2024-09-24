@@ -1,0 +1,212 @@
+# Exam Project: Most polluted cities in the world
+# By Irene Cassinelli
+
+# In this project I analyse the most polluted cities by analyzing
+# the particulate matter concentration.
+# This data set is from Kaggle and is provided by Raj Pandey
+# The source of the data is:
+# https://www.iqair.com/in-en/world-most-polluted-cities
+
+# Install the packages needed
+install.packages(readr)
+install.packages(tidyverse)
+install.packages(GGally)
+
+# Load the required libraries
+library(readr)
+library(tidyverse)
+library(GGally)
+
+# Import the data set
+poldata <- read_csv("C:/Users/irene/Desktop/Statistics/most-polluted_cities.csv")
+
+# Let's inspect the data set
+dim(poldata)
+names(poldata)
+# The original data set is composed of a table of 500 rows (observations) 
+# and 10 columns (variables)
+
+# First column: index
+# Second column: position from the more polluted city to the less polluted one
+# Third column: country name
+# Fourth column: city/town name
+# Fifth column: year of data collection
+# Sixth column: PM2.5 concentration
+# Seventh column: temporal coverage
+# Eight column: PM10 concentration
+# Ninth column: temporal coverage
+# Tenth column: database version
+
+glimpse(poldata)
+
+# Remove the columns not needed for the analysis
+# (i.e., the first column because I don't need the indices,
+# the seventh and the ninth columns, which are almost empty,
+# and the tenth, which contains the year of the database version)
+poldata <- poldata[, -c(1,7,9,10)]
+
+# Let's check if I removed the data correctly
+dim(poldata)
+names(poldata)
+
+# The new data set is composed of a table of 500 observations
+# and 6 variables of interest 
+
+# To simplify the study I consider only the year 2016
+poldata <- poldata %>%
+  filter(poldata$Year == 2016)
+
+glimpse(poldata)
+
+# Fix the data type
+poldata <- poldata %>%
+  mutate(Position = as.integer(Position), Year = as.integer(Year)) %>%
+  rename(City = `City/Town`)
+
+glimpse(poldata)
+
+# Since I deleted some rows, I have to re-organize the ranking position
+poldata[,1] <- c(1:nrow(poldata))
+
+
+# Summary statistics
+head(poldata)
+tail(poldata)
+summary(poldata$PM2.5)
+summary(poldata$PM10)
+# Only PM2.5 and PM10 data are required for the analysis 
+
+# Analyze the top50 cities
+top50 <- head(poldata, 50)
+glimpse(top50)
+
+# Let's look at the number of cities for each country in the top50 and plot them
+numcity <- ggplot(data = top50) + geom_bar(aes(x=Country)) +
+  labs(x="Country", y="Number of Cities") +
+  ggtitle("Number of Cities per Country in the top 50")
+
+numcity
+
+# Now plot the data of PM2.5 for each city
+city2.5 <- ggplot(data = top50) + 
+  geom_col(aes(x=PM2.5, y=reorder(City, PM2.5))) +
+  labs(x="PM 2.5", y="City") +
+  ggtitle("PM 2.5 of top 50 polluted Cities")
+
+city2.5
+
+# Then plot the data of PM10 for each city
+city10 <- ggplot(data = top50) + 
+  geom_col(aes(x=PM10, y=reorder(City, PM10))) +
+  labs(x="PM 10", y="City") +
+  ggtitle("PM 10 of top 50 polluted Cities")
+
+city10
+
+# and the data of PM2.5 and PM10 with log10 scale
+ggplot(data = top50) + 
+  geom_col(aes(x=log10(PM2.5), y=reorder(City, PM2.5))) +
+  labs(x="log10(PM 2.5)", y="City") +
+  ggtitle("log10 of PM 2.5 of top 50 polluted Cities")
+
+ggplot(data = top50) + 
+  geom_col(aes(x=log10(PM10), y=reorder(City, PM10))) +
+  labs(x="log10(PM 10)", y="City") +
+  ggtitle("log10 of PM 10 of top 50 polluted Cities")
+
+# Now save the graphs as pdf
+pdf("Number_top50_cities.pdf")
+plot(numcity)
+dev.off()
+
+pdf("PM2.5_top50_cities.pdf")
+plot(city2.5)
+dev.off()
+
+pdf("PM10_top50_cities.pdf")
+plot(city10)
+dev.off()
+
+# Assess the mean pollution of all cities for each country
+# I removed Mongolia and Saudi Arabia since they contain just one city
+top50 <- top50 %>%
+  filter(top50$Country == "China" | top50$Country == "India")
+
+top50
+
+# Calculate the summary of both the average PMs per country
+top50mean <- top50 %>%
+  group_by(Country) %>%
+  summarise(meanPM2.5 = mean(PM2.5),
+            meanPM10 = mean(PM10))
+
+top50mean
+
+# and plot
+
+averagePM2.5 <- ggplot(data = top50mean)+
+  geom_col(aes(x = Country, y = meanPM2.5))+
+  labs(x="Country", y="mean level of PM2.5") +
+  ggtitle("Average level of PM2.5 per country")
+
+averagePM10 <- ggplot(data = top50mean)+
+  geom_col(aes(x = Country, y = meanPM10))+
+  labs(x="Country", y="mean level of PM10") +
+  ggtitle("Average level of PM10 per country")
+
+averagePM2.5
+averagePM10
+
+# Now save the graphs as png files with ggsave
+ggsave(filename = "average_PM2.5_per_country.png" , plot = averagePM2.5)
+ggsave(filename = "average_PM10_per_country.png" , plot = averagePM10)
+
+# According to this analysis, the most polluted cities mainly
+# belong to China and India.
+
+
+# Hypothesis testing
+
+# Null hypothesis (H0): there is no positive correlation
+# between PM2.5 and PM10 for each country.
+# Alternative hypothesis (H1): there is positive correlation between them.
+
+# Let's study the two countries separately
+subChina <- top50 %>%
+  filter(top50$Country == "China")
+
+subIndia <- top50 %>%
+  filter(top50$Country == "India")
+
+# Let's check if there is correlation using the function cor.test()
+hChina <- cor.test(subChina$PM2.5, subChina$PM10, alternative = "greater")
+hChina
+
+hIndia <- cor.test(subIndia$PM2.5, subIndia$PM10, alternative = "greater")
+hIndia
+
+# For China there is a correlation of 0.594039 and
+# for India of 0.8985759.
+
+# According to these results and considering an alpha value of 0.05,
+# the null hypothesis (H0) can be rejected.
+# Since the correlation estimates are both positive,
+# I can say that there is a positive correlation between pm2.5 and pm10
+# in both countries. In particular, for China there is a weak correlation,
+# while for India there is a strong correlation.
+
+# Now plot and save
+corChina <- ggplot(data = subChina) +
+  geom_jitter(aes(x = PM2.5, y = PM10), alpha = 0.3) +
+  geom_smooth(aes(x = PM2.5, y = PM10), method = "lm") +
+  ggtitle("Correlation between China's PM2.5 and PM10 levels")
+
+corIndia <- ggplot(data = subIndia) +
+  geom_jitter(aes(x = PM2.5, y = PM10), alpha = 0.3) +
+  geom_smooth(aes(x = PM2.5, y = PM10), method = "lm") +
+  ggtitle("Correlation between India's PM2.5 and PM10 levels")
+
+ggsave(filename = "Correlation_PM_China.png" , plot = corChina)
+ggsave(filename = "Correlation_PM_Indiaa.png" , plot = corIndia)
+
+dev.off()
