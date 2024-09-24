@@ -1,0 +1,88 @@
+# 01_data_cleaning.R
+# Load required libraries
+library(tidyverse)
+library(readr)
+
+# Import the dataset
+file_path <- "../data/Food Waste data and research - by country.csv"
+food_waste_data <- read_csv(file_path)
+
+# Inspect the first few rows and the structure of the data
+head(food_waste_data)
+str(food_waste_data)
+
+# Handle missing values
+# Check for missing values (NA)
+colSums(is.na(food_waste_data))
+
+# Basic cleaning (removing NA, renaming columns if necessary)
+# For example: food_waste_data_cleaned <- na.omit(food_waste_data)
+
+# Save the cleaned dataset
+write_csv(food_waste_data, "../data/food_waste_data_cleaned.csv")
+
+----------------------------------------------------------------------------------------------------
+
+# 02_descriptive_analysis.R
+# Load required libraries
+library(tidyverse)
+library(ggplot2)
+
+# Import the cleaned dataset
+file_path_clean <- "../data/food_waste_data_cleaned.csv"
+food_waste_data <- read_csv(file_path_clean)
+
+# Summary statistics
+summary(food_waste_data)
+
+# Plotting univariate distributions
+# Histogram of Food Waste per Country
+ggplot(food_waste_data, aes(x = `Food Waste Amount`)) +
+  geom_histogram(binwidth = 100) +
+  labs(title = "Distribution of Food Waste Amount per Country")
+
+# Plotting bivariate distributions
+# Scatter plot between food waste and GDP per country
+ggplot(food_waste_data, aes(x = `GDP per capita`, y = `Food Waste Amount`)) +
+  geom_point() +
+  labs(title = "Scatter Plot of Food Waste vs. GDP per capita")
+
+# Save the plots
+ggsave("../output/plots/food_waste_distribution.png")
+ggsave("../output/plots/food_waste_vs_gdp.png")
+
+--------------------------------------------------------------------------------------------
+
+# 03_inferential_analysis.R
+# Load required libraries
+library(tidyverse)
+library(ggplot2)
+
+# Import the cleaned dataset
+file_path_clean <- "../data/food_waste_data_cleaned.csv"
+food_waste_data <- read_csv(file_path_clean)
+
+# Hypothesis: "Countries with higher GDP per capita generate more food waste"
+# Formulate and test the hypothesis using a linear model
+# Null Hypothesis (H0): There is no relationship between GDP and food waste.
+# Alternative Hypothesis (H1): There is a positive relationship between GDP and food waste.
+
+# Perform linear regression
+lm_model <- lm(`Food Waste Amount` ~ `GDP per capita`, data = food_waste_data)
+
+# Summary of the regression model
+summary(lm_model)
+
+# Plot the regression line
+ggplot(food_waste_data, aes(x = `GDP per capita`, y = `Food Waste Amount`)) +
+  geom_point() +
+  geom_smooth(method = "lm", col = "blue") +
+  labs(title = "Linear Relationship between GDP and Food Waste")
+
+# Save the results and plots
+ggsave("../output/plots/gdp_vs_food_waste_regression.png")
+
+# Interpretation: If p-value < 0.05, we reject the null hypothesis.
+# Comment the results based on the p-value and R-squared from the regression output.
+
+----------------------------------------------------------------------------------------------
