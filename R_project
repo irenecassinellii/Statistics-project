@@ -1,4 +1,4 @@
-# Exam Project: Most polluted cities in the world
+# Exam Project: Food waste
 # By Irene Cassinelli
 
 # In this project I analyse the most polluted cities by analyzing
@@ -8,205 +8,255 @@
 # https://www.iqair.com/in-en/world-most-polluted-cities
 
 # Install the packages needed
-install.packages(readr)
-install.packages(tidyverse)
-install.packages(GGally)
+install.packages("readr")
+install.packages("tidyverse")
+install.packages("ggplot2")
+install.packages("dplyr")
+install.packages("tidyr")
 
 # Load the required libraries
 library(readr)
 library(tidyverse)
-library(GGally)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
 
-# Import the data set
-poldata <- read_csv("C:/Users/irene/Desktop/Statistics/most-polluted_cities.csv")
+# Import the food waste data set
+food_waste <- read.csv("C:/Users/irene/Desktop/Statistics/food_waste.csv")
 
 # Let's inspect the data set
-dim(poldata)
-names(poldata)
-# The original data set is composed of a table of 500 rows (observations) 
-# and 10 columns (variables)
+view(food_waste)
+summary(food_waste)
+dim(food_waste)
+## The data set contains 214 observations (rows) and 12 variables (columns)
 
-# First column: index
-# Second column: position from the more polluted city to the less polluted one
-# Third column: country name
-# Fourth column: city/town name
-# Fifth column: year of data collection
-# Sixth column: PM2.5 concentration
-# Seventh column: temporal coverage
-# Eight column: PM10 concentration
-# Ninth column: temporal coverage
-# Tenth column: database version
+colnames(food_waste)
 
-glimpse(poldata)
-
-# Remove the columns not needed for the analysis
-# (i.e., the first column because I don't need the indices,
-# the seventh and the ninth columns, which are almost empty,
-# and the tenth, which contains the year of the database version)
-poldata <- poldata[, -c(1,7,9,10)]
+# Delete the columns not needed for the analysis
+food_waste <- food_waste[, -c(10, 12)]
 
 # Let's check if I removed the data correctly
-dim(poldata)
-names(poldata)
+dim(food_waste)
+## The new data set is composed of 214 observations and 10 variables
 
-# The new data set is composed of a table of 500 observations
-# and 6 variables of interest 
+# Add a column for combined estimate in tonnes/year
+food_waste$combined_estimate_tonnes_year <- rowSums(food_waste[, c("Household.estimate..tonnes.year.", "Retail.estimate..tonnes.year.", "Food.service.estimate..tonnes.year.")])
+food_waste <- food_waste[, c(1,2,11,3,4,5,6,7,8,9,10)]
 
-# To simplify the study I consider only the year 2016
-poldata <- poldata %>%
-  filter(poldata$Year == 2016)
+# Rename the columns
+new_col_names <- c("Country", "Combined estimate (kg/capita/year)", "Combined estimate (tonnes/year)", "Household estimate (kg/capita/year)", "Household estimate (tonnes/year)", "Retail estimate (kg/capita/year)", "Retail estimate (tonnes/year)", "Food service estimate (kg/capita/year)", "Food service estimate (tonnes/year)", "Estimate confidence", "Region")
+colnames(food_waste) <- new_col_names
 
-glimpse(poldata)
+# Let's check the renamed columns 
+colnames(food_waste)
+## [1] Country
+## [2] Combined estimate (kg/capita/year)
+## [3] Combined estimate (tonnes/year)
+## [4] Household estimate (kg/capita/year)
+## [5] Household estimate (tonnes/year)
+## [6] Retail estimate (kg/capita/year)
+## [7] Retail estimate (tonnes/year)
+## [8] Food service estimate (kg/capita/year)
+## [9] Food service estimate (tonnes/year)
+## [10] Estimate confidence
+## [11] Region
 
-# Fix the data type
-poldata <- poldata %>%
-  mutate(Position = as.integer(Position), Year = as.integer(Year)) %>%
-  rename(City = `City/Town`)
+# and if there are missing values (NA)
+sum(is.na(food_waste))
+## There are no missing values
 
-glimpse(poldata)
+# Let's start with the analysis!
 
-# Since I deleted some rows, I have to re-organize the ranking position
-poldata[,1] <- c(1:nrow(poldata))
+# Q1: How many tonnes of food are wasted each year?
+total_food_waste <- sum(food_waste$`Combined estimate (tonnes/year)`)
+print(total_food_waste)
+## In total, 930,857,271 tonnes of food are wasted every year
 
+# Q2: How much food per capita is wasted on average annually?
+average_waste <- mean(food_waste$`Combined estimate (kg/capita/year)`)
+print(average_waste)
+## On average, around 126.79 kg of food per capita is wasted each year
 
-# Summary statistics
-head(poldata)
-tail(poldata)
-summary(poldata$PM2.5)
-summary(poldata$PM10)
-# Only PM2.5 and PM10 data are required for the analysis 
+# Q3: Which country wastes the most food per capita?
+max_waste <- which.max(food_waste$`Combined estimate (kg/capita/year)`)
+country_max_waste <- food_waste$Country[max_waste]
+print(country_max_waste)
+## Malaysia is the country with the highest per capita food waste.
 
-# Analyze the top50 cities
-top50 <- head(poldata, 50)
-glimpse(top50)
+# Q4: Which country wastes the least food per capita?
+min_waste <- which.min(food_waste$`Combined estimate (kg/capita/year)`)
+country_min_waste <- food_waste$Country[min_waste]
+print(country_min_waste)
+## Slovenia is the country with the lowest per capita food waste.
 
-# Let's look at the number of cities for each country in the top50 and plot them
-numcity <- ggplot(data = top50) + geom_bar(aes(x=Country)) +
-  labs(x="Country", y="Number of Cities") +
-  ggtitle("Number of Cities per Country in the top 50")
+# Q5: Which are the top 5 countries for combined per-capita food waste??
+top_5 <- food_waste %>%
+  arrange(desc(`Combined estimate (kg/capita/year)`)) %>%
+  head(5)
+print(top_5)
+## [1] Malaysia
+## [2] Nigeria
+## [3] Rwanda
+## [4] Israel
+## [5] Greece
 
-numcity
+# Plot the histogram of the top 5 countries
+top_5_plot <- ggplot(top_5, aes(x = reorder(Country, -`Combined estimate (kg/capita/year)`), 
+                            y = `Combined estimate (kg/capita/year)`)) +
+  geom_bar(stat = "identity", fill = "red") +
+  labs(title = "Countries with the highest combined per capita food waste", 
+       x = "Countries", 
+       y = "Food waste (kg/capita/year)") +
+  theme_minimal()
+top_5_plot
 
-# Now plot the data of PM2.5 for each city
-city2.5 <- ggplot(data = top50) + 
-  geom_col(aes(x=PM2.5, y=reorder(City, PM2.5))) +
-  labs(x="PM 2.5", y="City") +
-  ggtitle("PM 2.5 of top 50 polluted Cities")
+# Q6: Which are the bottom 5 countries for combined per-capita food waste??
+bottom_5 <- food_waste %>%
+  arrange(`Combined estimate (kg/capita/year)`) %>%
+  head(5)
+print(bottom_5)
+## [1] Slovenia
+## [2] Russian Federation
+## [3] Austria
+## [4] Belgium
+## [5] Bangladesh
 
-city2.5
+# Plot the histogram of the bottom 5 countries 
+bottom_5_plot <- ggplot(bottom_5, aes(x = reorder(Country, `Combined estimate (kg/capita/year)`), 
+                               y = `Combined estimate (kg/capita/year)`)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(title = "Countries with the lowest combined per capita food waste", 
+       x = "Countries", 
+       y = "Food waste (kg/capita/anno)") +
+  theme_minimal()
+bottom_5_plot
 
-# Then plot the data of PM10 for each city
-city10 <- ggplot(data = top50) + 
-  geom_col(aes(x=PM10, y=reorder(City, PM10))) +
-  labs(x="PM 10", y="City") +
-  ggtitle("PM 10 of top 50 polluted Cities")
-
-city10
-
-# and the data of PM2.5 and PM10 with log10 scale
-ggplot(data = top50) + 
-  geom_col(aes(x=log10(PM2.5), y=reorder(City, PM2.5))) +
-  labs(x="log10(PM 2.5)", y="City") +
-  ggtitle("log10 of PM 2.5 of top 50 polluted Cities")
-
-ggplot(data = top50) + 
-  geom_col(aes(x=log10(PM10), y=reorder(City, PM10))) +
-  labs(x="log10(PM 10)", y="City") +
-  ggtitle("log10 of PM 10 of top 50 polluted Cities")
-
-# Now save the graphs as pdf
-pdf("Number_top50_cities.pdf")
-plot(numcity)
+# Now save the graphs as pdf file
+pdf("Top_5_countries.pdf")
+plot(top_5_plot)
 dev.off()
 
-pdf("PM2.5_top50_cities.pdf")
-plot(city2.5)
+pdf("Bottom_5_countries.pdf")
+plot(bottom_5_plot)
 dev.off()
 
-pdf("PM10_top50_cities.pdf")
-plot(city10)
+# Q7: What is the average food waste per capita for each region?
+region_waste <- food_waste %>%
+  group_by(Region) %>%
+  summarise(mean_waste = mean(`Combined estimate (kg/capita/year)`)) %>%
+  arrange(desc(mean_waste))
+print(region_waste)
+
+# Create a horizontal histogram of regions sorted by food waste
+region_waste_plot <- ggplot(region_waste, aes(x = reorder(Region, mean_waste), y = mean_waste)) +
+  geom_bar(stat = "identity", fill = "orange") +
+  labs(title = "Mean food waste per region", 
+       x = "Regions", 
+       y = "Mean food waste (kg/capita/year)") +
+  theme_minimal() +
+  coord_flip()
+region_waste_plot
+
+# Save the histogram as pdf file
+pdf("Region_waste.pdf")
+plot(region_waste_plot)
 dev.off()
 
-# Assess the mean pollution of all cities for each country
-# I removed Mongolia and Saudi Arabia since they contain just one city
-top50 <- top50 %>%
-  filter(top50$Country == "China" | top50$Country == "India")
+# Q8: Comparison of the different categories of food waste per capita by region 
+region_waste_categories <- food_waste %>%
+  group_by(Region) %>%
+  summarise(
+    Household = mean(`Household estimate (kg/capita/year)`),
+    Retail = mean(`Retail estimate (kg/capita/year)`),
+    Food_Service = mean(`Food service estimate (kg/capita/year)`)
+  )
 
-top50
+# Long format data for ggplot
+region_waste_long <- region_waste_categories %>%
+  pivot_longer(cols = c(Household, Retail, Food_Service), 
+               names_to = "Category", 
+               values_to = "Waste")
 
-# Calculate the summary of both the average PMs per country
-top50mean <- top50 %>%
-  group_by(Country) %>%
-  summarise(meanPM2.5 = mean(PM2.5),
-            meanPM10 = mean(PM10))
+# Create a stacked bar chart to compare food waste categories in each region
+categories_plot <- ggplot(region_waste_long, aes(x = reorder(Region, -Waste), y = Waste, fill = Category)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Comparison of food waste categories by region",
+       x = "Region", 
+       y = "Mean food waste (kg/capita/year)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_manual(values = c("Household" = "red", "Retail" = "darkred", "Food_Service" = "pink")) 
+categories_plot
 
-top50mean
+# Save the graph
+pdf("Categories.pdf")
+plot(categories_plot)
+dev.off()
 
-# and plot
+# Q9: Total food waste by source (Household, Retail, Food Service)
+total_waste_by_source <- food_waste %>%
+  summarise(
+    Household = sum(`Household estimate (tonnes/year)`),
+    Retail = sum(`Retail estimate (tonnes/year)`),
+    Food_Service = sum(`Food service estimate (tonnes/year)`)
+  )
 
-averagePM2.5 <- ggplot(data = top50mean)+
-  geom_col(aes(x = Country, y = meanPM2.5))+
-  labs(x="Country", y="mean level of PM2.5") +
-  ggtitle("Average level of PM2.5 per country")
+# Display the results
+print(total_waste_by_source)
+## Household: 569,003,670
+## Retail: 118,137,722
+## Food service: 243,715,879
 
-averagePM10 <- ggplot(data = top50mean)+
-  geom_col(aes(x = Country, y = meanPM10))+
-  labs(x="Country", y="mean level of PM10") +
-  ggtitle("Average level of PM10 per country")
+# Convert data to long format for ggplot
+total_waste_long <- total_waste_by_source %>%
+  pivot_longer(cols = everything(), names_to = "Source", values_to = "Total_Waste")
 
-averagePM2.5
-averagePM10
+# Create a histogram with the total contribution of each source
+source_plot <- ggplot(total_waste_long, aes(x = Source, y = Total_Waste, fill = Source)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Total contribution to food waste by source",
+       x = "Source",
+       y = "Total food waste (tonnes/year)") +
+  theme_minimal() +
+  scale_fill_manual(values = c("Household" = "red", "Retail" = "darkred", "Food_Service" = "pink"))
+source_plot
 
-# Now save the graphs as png files with ggsave
-ggsave(filename = "average_PM2.5_per_country.png" , plot = averagePM2.5)
-ggsave(filename = "average_PM10_per_country.png" , plot = averagePM10)
+# Save it as a pdf file
+pdf("Source.pdf")
+plot(source_plot)
+dev.off()
 
-# According to this analysis, the most polluted cities mainly
-# belong to China and India.
+## Hypothesis testing
+## Null Hypothesis (H₀): there is no relationship between household food waste and total food waste
+## Alternative Hypothesis (H₁): there is a significant relationship between household food waste and total food waste
 
+# Q10: Check the correlation between household food waste per capita and total food waste per capita
+correlation <- cor(food_waste$`Household estimate (kg/capita/year)`, food_waste$`Combined estimate (kg/capita/year)`, method = "pearson")
 
-# Hypothesis testing
+# Print the result
+print(correlation)
 
-# Null hypothesis (H0): there is no positive correlation
-# between PM2.5 and PM10 for each country.
-# Alternative hypothesis (H1): there is positive correlation between them.
+# Fit the linear regression model
+model <- lm(`Combined estimate (kg/capita/year)` ~ `Household estimate (kg/capita/year)`, data = food_waste)
 
-# Let's study the two countries separately
-subChina <- top50 %>%
-  filter(top50$Country == "China")
+# View the summary of the model (to see the coefficients, p-value, R-squared)
+summary(model)
 
-subIndia <- top50 %>%
-  filter(top50$Country == "India")
+# Scatter plot with regression line
+relationship <- ggplot(food_waste, aes(x = `Household estimate (kg/capita/year)`, y = `Combined estimate (kg/capita/year)`)) +
+  geom_point(color = "blue") +  # Scatter plot of data points
+  geom_smooth(method = "lm", col = "red") +  # Add regression line
+  ggtitle("Relationship between household food waste and total food waste") +
+  xlab("Household food waste (kg/capita/year)") +
+  ylab("Total food waste (kg/capita/year)")
+relationship
 
-# Let's check if there is correlation using the function cor.test()
-hChina <- cor.test(subChina$PM2.5, subChina$PM10, alternative = "greater")
-hChina
+## There is a strong positive correlation between household food waste per capita
+## and total food waste per capita. Therefore, we can reject the null hypothesis 
+## and accept the alternative hypothesis (i.e., household food waste has a 
+## significant effect on total food waste)
 
-hIndia <- cor.test(subIndia$PM2.5, subIndia$PM10, alternative = "greater")
-hIndia
-
-# For China there is a correlation of 0.594039 and
-# for India of 0.8985759.
-
-# According to these results and considering an alpha value of 0.05,
-# the null hypothesis (H0) can be rejected.
-# Since the correlation estimates are both positive,
-# I can say that there is a positive correlation between pm2.5 and pm10
-# in both countries. In particular, for China there is a weak correlation,
-# while for India there is a strong correlation.
-
-# Now plot and save
-corChina <- ggplot(data = subChina) +
-  geom_jitter(aes(x = PM2.5, y = PM10), alpha = 0.3) +
-  geom_smooth(aes(x = PM2.5, y = PM10), method = "lm") +
-  ggtitle("Correlation between China's PM2.5 and PM10 levels")
-
-corIndia <- ggplot(data = subIndia) +
-  geom_jitter(aes(x = PM2.5, y = PM10), alpha = 0.3) +
-  geom_smooth(aes(x = PM2.5, y = PM10), method = "lm") +
-  ggtitle("Correlation between India's PM2.5 and PM10 levels")
-
-ggsave(filename = "Correlation_PM_China.png" , plot = corChina)
-ggsave(filename = "Correlation_PM_Indiaa.png" , plot = corIndia)
-
+# Save the graph
+pdf("Relationship.pdf")
+plot(relationship)
 dev.off()
