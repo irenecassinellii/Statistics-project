@@ -1,11 +1,11 @@
-## Exam Project: Food waste
-## By Irene Cassinelli
+## Exam Project: Global food waste assessment
 
-# In this project I analyse the most polluted cities by analyzing
-# the particulate matter concentration.
-# This data set is from Kaggle and is provided by Raj Pandey
-# The source of the data is:
-# https://www.iqair.com/in-en/world-most-polluted-cities
+## The analysis aims to quantify food waste across different countries and regions,
+## assess the categories of waste generation (household, retail, and food service),
+## and determine how much food is wasted annually.
+
+## The data set is from Kaggle and is provided by Joakim Arvidsson
+## Source: https://www.kaggle.com/datasets/joebeachcapital/food-waste 
 
 # Install the packages needed
 install.packages("readr")
